@@ -31,7 +31,6 @@
 	- [Account](#account)
 		- [Le tue info](#le-tue-info)
 		- [Account e-mail e per le app](#account-e-mail-e-per-le-app)
-		- [Opzioni di accesso](#opzioni-di-accesso)
 		- [Sincronizza le impostazioni](#sincronizza-le-impostazioni)
 	- [Data e ora](#data-e-ora)
 		- [Data e ora](#data-e-ora-1)
@@ -255,9 +254,6 @@ Accedi all'account Microsoft
 ### Account e-mail e per le app
 TODO: add mother email
 
-### Opzioni di accesso
-TODO: nothing much to see here
-
 ### Sincronizza le impostazioni
 Tutto: **ON**
 
@@ -268,7 +264,7 @@ Tutto: **ON**
 - Imposta fuso orario automaticamente: ON
 
 ### Area geografica e lingua
-Install `Tastiera Italiana per Programmatori`
+Install `Tastiera Italiana per Programmatori`, which can be found in the following [folder](../generic/italian-programmer-keyboard/it-prog).
 TODO: add link
 
 ## Accessibilità
