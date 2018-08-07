@@ -264,8 +264,7 @@ Tutto: **ON**
 - Imposta fuso orario automaticamente: ON
 
 ### Area geografica e lingua
-Install `Tastiera Italiana per Programmatori`, which can be found in the following [folder](../generic/italian-programmer-keyboard/it-prog).
-TODO: add link
+Install `Tastiera Italiana per Programmatori`, which can be found in the following [folder](../generic/italian-programmer-keyboard/it-prog), and set it as default Italian Keyboard.
 
 ## Accessibilità
 ### Assistente Vocale:
