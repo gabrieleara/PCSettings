@@ -72,9 +72,12 @@
 	- [Nvidia GeForce Experience](#nvidia-geforce-experience)
 	- [VS Code](#vs-code)
 	- [MATLAB](#matlab)
+	- [Office 365](#office-365)
+	- [Unipi VPN - Pulse Secure](#unipi-vpn---pulse-secure)
 - [Tools](#tools)
 	- [Caffeinated](#caffeinated)
 	- [Tree Size Free](#tree-size-free)
+	- [Etcher](#etcher)
 - [Start Menu](#start-menu)
 
 # System Settings
@@ -485,7 +488,17 @@ facebook.com google.com TODO
 ## MATLAB
 - Download Link: https://www.mathworks.com/downloads/
 - Updates Download Link: https://it.mathworks.com/downloads/web_downloads/show_updates?release=R2018a
+- Log in
 - TODO: Configuration
+
+## Office 365
+- Download Link: https://account.microsoft.com/services/office/install
+
+## Unipi VPN - Pulse Secure
+- Download Link: https://vpn.unipi.it/
+- Download Pulse Secure Application Launcher
+- Once installed, open again https://vpn.unipi.it/ and launch Pulse Secure from the webpage to load the certificate into the application and you are done.
+
 
 
 # Tools
@@ -513,6 +526,11 @@ facebook.com google.com TODO
 - Create a Desktop Shortcut
 - Move the new shortcut to `"C:\Users\gabriele\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Tools"`
 
+## Etcher
+- Download Link: https://etcher.io/ (pick portable version)
+- Copy the file in `"C:\Tools\"`
+- Create a Desktop Shortcut
+- Move the new shortcut to `"C:\Users\gabriele\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Tools"`
 
 # Start Menu
 TODO
