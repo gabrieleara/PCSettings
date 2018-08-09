@@ -48,6 +48,7 @@
 		- [Posizione](#posizione)
 	- [Aggiornamento e Sicurezza](#aggiornamento-e-sicurezza)
 		- [Windows Update](#windows-update)
+- [Real Time Fix](#real-time-fix)
 - [Drivers](#drivers)
 - [TaskBar](#taskbar)
 - [App](#app-1)
@@ -312,6 +313,18 @@ Disattivato
 	- Più promemoria al riavvio: **OFF**
 	- Sospendi aggiornamenti: **OFF**
 	- Quando installare: **canale semestrale (mirato)**
+
+# Real Time Fix
+When dual booting Windows with Linux, the time displayed in Windows can be wrong because Linux often uses Universal Time (GMT) as time stored in system clock and then converts it at runtime in the correct locale information.
+To make Windows act as linux, create a file called `timefix.reg` with the following content, then execute it.
+After reboot, the time displayed in Windows should be fine.
+
+```
+Windows Registry Editor Version 5.00
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\TimeZoneInformation]
+"RealTimeIsUniversal"=dword:00000001
+```
 
 # Drivers
 
