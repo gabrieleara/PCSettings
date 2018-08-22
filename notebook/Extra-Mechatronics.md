@@ -14,7 +14,7 @@ Make sure to install following programs (each element is a link to where to get 
 Just install it.
 
 ## HTerm
-- Extract `Hterm.exe` inside `"C:\Tools\"`
+- Extract `HTerm.exe` inside `"C:\Tools\"`
 - Create a Desktop Shortcut
 - Move the new shortcut to `"C:\Users\gabriele\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Tools"`
 
