@@ -1,8 +1,9 @@
-# Introduction
+# My Windows Settings
+_A simple long reminder_
 
 # Table of Contents
 
-- [Introduction](#introduction)
+- [My Windows Settings](#my-windows-settings)
 - [Table of Contents](#table-of-contents)
 - [System Settings](#system-settings)
 	- [Sistema](#sistema)
@@ -80,6 +81,7 @@
 	- [Tree Size Free](#tree-size-free)
 	- [Etcher](#etcher)
 - [Start Menu](#start-menu)
+- [Extra](#extra)
 
 # System Settings
 Following settings are localized in Italian, since that's how I see them on my UI. Missing elements from Windows Settings application are supposed to be left as they are.
@@ -548,3 +550,6 @@ facebook.com google.com TODO
 # Start Menu
 TODO
 
+# Extra
+
+I follow a Mechatronics class at Scuola Superiore Sant'Anna. The actions needed to have a working environment for that class (on top of the ones described in this document) can be found [here](./Extra-Mechatronics.md).
