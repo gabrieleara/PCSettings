@@ -385,14 +385,21 @@ Required drivers are the following ones:
 	- Keyboard Shortcuts > Remap Keys > Delete any mapping
 	- Whitelist:
 ```
-facebook.com google.com TODO
+facebook.com
+google.com 
+TODO
 ```
 	
 - Feedly:
 	- Open `chrome-extension://hipbfijinpcgfogaopmgehiegacbhmob/gc-options.htm`
 	- Show Feedly Mini Icon: **OFF**
-- STANDS
+- STANDS:
 	- Just enable it
+- Elenco Lettura:
+	- Tema: Luce
+	- Attivare Animazione: ON
+	- Aprire link in una nuova scheda: ON
+	- Mostrare nel menu di contesto: ON
 
 ## Google Drive
 - Download Link: https://www.google.com/drive/download/
