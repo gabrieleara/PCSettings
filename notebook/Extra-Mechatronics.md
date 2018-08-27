@@ -19,6 +19,7 @@ This guide assumes that you already followed the steps defined in [this document
     - [GPIO Ports Configuration](#gpio-ports-configuration)
     - [Global Clock Configuration](#global-clock-configuration)
     - [USART Configuration](#usart-configuration)
+    - [Checking Basic PINs Configuration](#checking-basic-pins-configuration)
 
 # Installing Software
 
@@ -167,4 +168,53 @@ The following is a configuration which is compatible with previous requirements:
 > `RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;`
 
 ## USART Configuration
-*TODO*
+
+For our purposes, we will use the USART3 functionality to perform serial communication over USB. To configure this, select the `Pinout` tab, under the `USART3` voice in left panel set the mode to `Asynchronous`. Then let's assign PINs to `USART3`. Set `PD8` as `USART3_TX` and `PD9` as `USART3_RX`.
+
+![USART Mode](mec-pics/11.png "Set the mode to `Asynchronous`")
+![USART PINs](mec-pics/12.png "Set the two PINS as Tx/Rx")
+
+Next move to `Configuration` tab and click on `USART3` to configure the USART with the following settings:
+
+| Parameter         | Value                             |
+| ----------------- | --------------------------------- |
+| Baud Rate         | 115200 Bits/s (automatically set) |
+| Word Length       | 8 Bits (including parity)         |
+| Parity            | None                              |
+| Stop Bits         | 1                                 |
+| Data Direction    | Receive and Transmit              |
+| Over Sampling     | 16 samples                        |
+| Single Sample     | Disable                           |
+| Advanced features | All Disabled                      |
+
+> **NOTICE**: For low speed ports it’s better to have 16 samples per transmit, but at higher speeds it won’t be possible to configure it like this, due to clock limitations.
+
+![USART Configuration](mec-pics/13.png "Set the values as in previous table")
+
+> The timeout for the transmit operation has to be big enough so that for each bit that has to be transmitted the program will wait for at least one cent of millisecond; considering that the transmit requires 10 bits per byte, the global wait time must be at least one tenth of millisecond per byte.
+
+Once code is generated we can modify it (in the appropriate spaces) to send data through USART3 and we can read data using PuTTY on PC for example. 
+
+Now if you have a serial emulator terminal like Putty you can read the transmitted value.
+
+## Checking Basic PINs Configuration
+
+If we want to check wether the PINs we set work, we can modify generated code so that a LED will light up when we press the user button. To do so, let's go in `main` function and insert the following lines within the infinite loop:
+``` c
+if (HAL_GPIO_ReadPin(BTN_USR_GPIO_Port, BTN_USR_Pin))
+{
+    HAL_GPIO_WritePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin, 1);
+}
+else
+{
+    HAL_GPIO_WritePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin, 0);
+}
+```
+
+Or in a more compact way:
+``` c
+HAL_GPIO_WritePin(BLUE_LED_PORT, BLUE_LED_PIN,
+    HAL_GPIO_ReadPin(BTN_USR_GPIO_Port, BTN_USR_Pin));
+```
+
+
