@@ -160,7 +160,23 @@ Now let's go back to `Clock Configuration` again and select the correct values f
 
 Also, select `PLLCLK` option in the switch at the right of the displayed one; this allows us to obtain a different clock frequency as a base for our final clocks (shown on the right-side of the scheme). The `PLLCLK` gives us many more configuration options than selecting only the `HSE` option (after which we can only set a prescaler).
 
-Now let's look at the right side of the scheme and decide which values we want as resulting clocks. One of the clocks we are interested in is the `HCLK` one, which is used to communicate using the serial over USB cable. Since we want it as a multiple of 48 MHz, ~~even if I don't know why yet,~~ we can put 216 MHz in that block and let the program calculate the other values by itself. If we don't like final result we can modify them by hand later.
+Now let's look at the right side of the scheme and decide which values we want as resulting clocks. One of the clocks we are interested in is the `HCLK` one, which is used to communicate using the serial over USB cable.
+
+> Clocks and timers within a Cortex processor are connected to various different clock sources, all delivered starting from the clock source provided on the left. These clock sources are:
+> - `HCLK`: is the actual processor clock source and it drives SysTick timer.
+> - `FCLK`: it is synchronized with HCLK, but it's not affected by sleeping condition of the processor, in which `HCLK` stops; `FCLK` ensures that interrupts can be sampled, and sleep events can be traced, while the processor is sleeping.
+> - `APB1`/`APB2`: they stand for Advanced Peripheral Bus, on which there are the clock sources to which most peripherals and timers are connected. The relative clock sources are limited to a maximum of 54 and 108 MHz rispectively when driving *peripheral clocks* and 108 and 216 MHz rispectively when driving *timer clocks*. For a complete reference of which peripherals/clocks are connected to these two timers refer to the following table.
+
+
+| Clock Source          | Maximum <br> Frequency <br> (default) | Timer/Peripheral                                                                                                                                      |
+| --------------------- | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| APB1 Peripheral Clock | 54 MHz                                | LPTIM1 WWDG SPI2/I2S2 SPI3/I2S3 SPDIFRX <br> USART2 USART3 UART4 UART5 UART7 UART8 <br> I2C1 I2C2 I2C3 I2C4 <br> CAN1 CAN2 CAN3 <br> HDMI-CEC PWR DAC |
+| APB1 Timer Clock      | 108 MHz                               | TIM2 TIM3 TIM4 TIM5 TIM6 TIM7 TIM12 TIM13 TIM14                                                                                                       |
+| APB1 Peripheral Clock | 108 MHz                               | USART1 USART6 <br> ADC1 ADC2 ADC3 <br> SDMMC1 SDMMC2 <br> SPI1/I2S1 SPI4 SPI5 SPI6 <br> SYSCFG SAI1 SAI2 DFSDM1 <br> MDIO LTDC DSI                    |
+| APB2 Timer Clock      | 216 MHz                               | TIM1 TIM8 TIM9 TIM10 TIM11                                                                                                                            |
+
+
+Since we want the system clock to be as much high as possible, we will select 216 MHz in `HCLK` field; once that value is entered we can just let the program calculate the other values by itself. If we don't like final result we can modify them by hand later.
 
 In particular, the program tells us when some configuration is in conflict with acceptable values from any component by flagging the wrong value as `red`. Adjust values until you get a suitable configuration (prescalers, `ABP1`, `ABP2`, and so on).
 The following is a configuration which is compatible with previous requirements:
@@ -293,15 +309,11 @@ int main(void)
     }
 }
 ```
-
-
-
-
-
-
 ## Timers (TODO)
 
-Now that we enabled `USART3 global interrupt` we need to associate it with a timer. To do so, we will use `TIM1` timer, setting the following configuration
+Now we can execute code triggered by interrupts, however usually we want to execute code at fixed intervals of time, thus a timer is needed. To do so, we need to enable a timer from the left panel of `Pinout` tab.
+
+Following is the configuration needed to enable `TIM1` timer:
 
 | Attribute     | Value                     |
 | ------------- | ------------------------- |
@@ -310,6 +322,11 @@ Now that we enabled `USART3 global interrupt` we need to associate it with a tim
 | Channel2      | Output Compare CH2        |
 | Anything else | Disabled                  |
 
+![TIM1 Enable](mec-pics/17.png "Enable TIM1 timer using these configurations")
 
-> **NOTICE**: It’s never a good idea to use the timer inside the ARM processor to do stuff. Our systems will be developed on bare-metal microprocessors, but usually that timer is reserved to Operating Systems to do their stuff. If we'd like our code to be portable, we should design our modules using other timers. System timer has a fixed 0-priority and cannot be changed.
+
+
+> **NOTICE**: It’s never a good idea to use the system timer inside the ARM processor (SysTick) to schedule tasks. Our systems will be developed on bare-metal microprocessors, but usually that timer is reserved to Operating Systems to do their stuff. If we'd like our code to be portable, we should design our modules using other timers. SysTick timer has a fixed 0-priority and cannot be changed.
+
+Once the timer is enabled we can change its settings under `Configuration` tab.
 
