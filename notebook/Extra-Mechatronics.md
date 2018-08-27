@@ -19,7 +19,10 @@ This guide assumes that you already followed the steps defined in [this document
     - [GPIO Ports Configuration](#gpio-ports-configuration)
     - [Global Clock Configuration](#global-clock-configuration)
     - [USART Configuration](#usart-configuration)
-    - [Checking Basic PINs Configuration](#checking-basic-pins-configuration)
+    - [Reading/Writing GPIO PINs](#readingwriting-gpio-pins)
+    - [~~Reading~~/Writing on USART using Blocking API](#readingwriting-on-usart-using-blocking-api)
+    - [Interrupts and USART3 Interrupt API](#interrupts-and-usart3-interrupt-api)
+    - [Timers (TODO)](#timers-todo)
 
 # Installing Software
 
@@ -197,7 +200,7 @@ Once code is generated we can modify it (in the appropriate spaces) to send data
 
 Now if you have a serial emulator terminal like Putty you can read the transmitted value.
 
-## Checking Basic PINs Configuration
+## Reading/Writing GPIO PINs
 
 If we want to check wether the PINs we set work, we can modify generated code so that a LED will light up when we press the user button. To do so, let's go in `main` function and insert the following lines within the infinite loop:
 ``` c
@@ -213,8 +216,100 @@ else
 
 Or in a more compact way:
 ``` c
-HAL_GPIO_WritePin(BLUE_LED_PORT, BLUE_LED_PIN,
+HAL_GPIO_WritePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin,
     HAL_GPIO_ReadPin(BTN_USR_GPIO_Port, BTN_USR_Pin));
 ```
 
+## ~~Reading~~/Writing on USART using Blocking API
+
+Since we haven't configured any interrupt/DMA mechanism yet, we can only send data on USART synchronously. To do so, the following code can be used (again, put it within infinite while loop):
+```c
+HAL_UART_Transmit(&huart3, "HelloWorld\r\n", 12, 4);
+```
+where:
+- `&huart3` is the address of our USART handler;
+- `"HelloWorld\n"` is the pointer to the message we want to send;
+- `11` is the length of the message;
+- `4` is the timeout, expressed in ~~milliseconds~~ **_???_**.
+
+If we now start PuTTY on Windows and we select the correct port with the settings we put in our USART3 configuration we can read the values. The right port name can be found if we open `Device Manager` on Windows, under `Serial Ports (COM and LPT)`.
+
+## Interrupts and USART3 Interrupt API
+
+In the way we programmed until now, we cannot create parallel tasks (in a timed or in any way in general). To do so, in particular for time-activated tasks, we need to configure the interrupt environment. When enabled, a peripheral can be also controlled using interrupts, instead of setting a timeout to wait for the blocking operations to complete like we did before.
+
+The first action that we need to do is to enable interrupts in Cube. In the `Configuration` tab, select `NVIC` (Nested Vector Interrupt Controller) entry to open interrupt handler configuration. From this window we can change priorities of interrupts and other configurations.
+
+The highest priority in the ARM architecture is the 0-priority, while the lowest is 15 (if 4 bits of *preemption priority*, also called *sub-priority* are used). Higher priority interrupts can preempt only strictly lower priority interrupt handlers (this is true also if we enable also sub-priorities).
+
+The sub-priority is used only if the processor has to choose between two or more same-priority interrupts in a given moment. Typically this happens whenever a high-priority interrupt ends its execution and the processor has to choose between more than one interrupt with same priority. This is the only case where sub priority has a meaning, and once again, lower absolute value means higher sub-priority.
+
+> While usually the 0-priority is reserved to faults or other system interrupts, we can use it because their trigger is so unlikely that when it happens it's something so bad that our system could be irreversiverly damaged, like when the processor encounters very big problems. However the good practice is to change the priority of peripheral handlers to a non-zero value.
+
+![NVIC Configuration](mec-pics/14.png "NVIC Configuration window")
+
+In alternative, each interrupt handler can be enabled/managed from the configuration window of the associated device. In our case the `USART3` controller. For the USART3 interrupt we will configure the lowest priority possible (without sub priorities) which is 15.
+
+> **Notice**: if we have a system where tasks are activated at different rates using different timers, assigning to these timers different priorities will configure also a priority between their associated tasks.
+
+![USART3 NVIC Configuration](mec-pics/15.png "Usart3 NVIC Configuration tab")
+
+![USART3 NVIC Priority](mec-pics/16.png "Set USART3 Priority to 15 (lowest priority)")
+
+Now that we have configured the USART3 to use interrupts we can use its Interrupt API calls to send data asynchronously. We can even override `__weak` functions defined by Cube to react when transmission is finished/data is received. `__weak` functions defined by Cube do nothing.
+
+Of course, since calls for transmitting are not blocking anymore we cannot use them within the infinite loop. We can however write the first transmit just before the infinite loop and then define the handler for when the transmit is completed, like this:
+``` c
+/* USER CODE BEGIN PV */
+/* Private variables ---------------------------------------------------------*/
+static char text[] = "HelloWorldIT\r\n";
+/* USER CODE END PV */
+
+/* ... */
+
+/* USER CODE BEGIN 0 */
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+    /* Interrupt-based transmit has no timeout,
+     * since it's not blocking.
+     */
+    HAL_UART_Transmit_IT(&huart3, (unsigned char*) text, strlen(text));
+}
+/* USER CODE END 0 */
+
+/* ... */
+
+int main(void)
+{
+    /* ... */
+
+    /* USER CODE BEGIN 2 */
+    HAL_UART_Transmit_IT(&huart3, (unsigned char*) text, strlen(text));
+    /* USER CODE END 2 */
+
+    while(1)
+    {
+        /* ... */
+    }
+}
+```
+
+
+
+
+
+
+## Timers (TODO)
+
+Now that we enabled `USART3 global interrupt` we need to associate it with a timer. To do so, we will use `TIM1` timer, setting the following configuration
+
+| Attribute     | Value                     |
+| ------------- | ------------------------- |
+| Clock Source  | Internal Clock            |
+| Channel1      | Input Capture direct mode |
+| Channel2      | Output Compare CH2        |
+| Anything else | Disabled                  |
+
+
+> **NOTICE**: It’s never a good idea to use the timer inside the ARM processor to do stuff. Our systems will be developed on bare-metal microprocessors, but usually that timer is reserved to Operating Systems to do their stuff. If we'd like our code to be portable, we should design our modules using other timers. System timer has a fixed 0-priority and cannot be changed.
 
