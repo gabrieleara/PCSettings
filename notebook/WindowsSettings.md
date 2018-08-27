@@ -502,7 +502,7 @@ TODO
 - Download Link: https://www.nvidia.it/geforce/geforce-experience/
 
 ## VS Code
-- Download Link: https://code.visualstudio.com/docs/?dv=win64
+- Download Link: https://code.visualstudio.com/docs/?dv=win64user
 - Download Git Link: https://git-scm.com/download/win
 - TODO: Configuration
 
