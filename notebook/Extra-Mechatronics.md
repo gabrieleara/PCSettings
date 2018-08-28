@@ -22,7 +22,18 @@ This guide assumes that you already followed the steps defined in [this document
     - [Reading/Writing GPIO PINs](#readingwriting-gpio-pins)
     - [~~Reading~~/Writing on USART using Blocking API](#readingwriting-on-usart-using-blocking-api)
     - [Interrupts and USART3 Interrupt API](#interrupts-and-usart3-interrupt-api)
-    - [Timers (TODO)](#timers-todo)
+    - [Timers](#timers)
+        - [Configurable Timers Characteristics](#configurable-timers-characteristics)
+            - [Advanced-Control Timers (TIM1, TIM8)](#advanced-control-timers-tim1-tim8)
+            - [General-Purpose Timers (TIMx)](#general-purpose-timers-timx)
+            - [Basic Timers (TIM6, TIM7)](#basic-timers-tim6-tim7)
+        - [Timer Clock Sources](#timer-clock-sources)
+        - [Timer Modes for each Channel](#timer-modes-for-each-channel)
+            - [Timer Input Capure Mode](#timer-input-capure-mode)
+            - [Timer Output Compare Mode](#timer-output-compare-mode)
+            - [Timer PWM Mode](#timer-pwm-mode)
+            - [Timer One Pulse Mode](#timer-one-pulse-mode)
+    - [Configuring a Timer (TODO)](#configuring-a-timer-todo)
 
 # Installing Software
 
@@ -168,12 +179,12 @@ Now let's look at the right side of the scheme and decide which values we want a
 > - `APB1`/`APB2`: they stand for Advanced Peripheral Bus, on which there are the clock sources to which most peripherals and timers are connected. The relative clock sources are limited to a maximum of 54 and 108 MHz rispectively when driving *peripheral clocks* and 108 and 216 MHz rispectively when driving *timer clocks*. For a complete reference of which peripherals/clocks are connected to these two timers refer to the following table.
 
 
-| Clock Source          | Maximum <br> Frequency <br> (default) | Timer/Peripheral                                                                                                                                      |
-| --------------------- | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| APB1 Peripheral Clock | 54 MHz                                | LPTIM1 WWDG SPI2/I2S2 SPI3/I2S3 SPDIFRX <br> USART2 USART3 UART4 UART5 UART7 UART8 <br> I2C1 I2C2 I2C3 I2C4 <br> CAN1 CAN2 CAN3 <br> HDMI-CEC PWR DAC |
-| APB1 Timer Clock      | 108 MHz                               | TIM2 TIM3 TIM4 TIM5 TIM6 TIM7 TIM12 TIM13 TIM14                                                                                                       |
-| APB1 Peripheral Clock | 108 MHz                               | USART1 USART6 <br> ADC1 ADC2 ADC3 <br> SDMMC1 SDMMC2 <br> SPI1/I2S1 SPI4 SPI5 SPI6 <br> SYSCFG SAI1 SAI2 DFSDM1 <br> MDIO LTDC DSI                    |
-| APB2 Timer Clock      | 216 MHz                               | TIM1 TIM8 TIM9 TIM10 TIM11                                                                                                                            |
+| Clock Source          | Maximum<br>Frequency<br>(default) | Timer/Peripheral                                                                                                                              |
+| --------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| APB1 Peripheral Clock | 54 MHz                            | LPTIM1 WWDG SPI2/I2S2 SPI3/I2S3 SPDIFRX<br>USART2 USART3 UART4 UART5 UART7 UART8<br>I2C1 I2C2 I2C3 I2C4<br>CAN1 CAN2 CAN3<br>HDMI-CEC PWR DAC |
+| APB1 Timer Clock      | 108 MHz                           | TIM2 TIM3 TIM4 TIM5 TIM6 TIM7 TIM12 TIM13 TIM14                                                                                               |
+| APB1 Peripheral Clock | 108 MHz                           | USART1 USART6<br>ADC1 ADC2 ADC3<br>SDMMC1 SDMMC2<br>SPI1/I2S1 SPI4 SPI5 SPI6<br>SYSCFG SAI1 SAI2 DFSDM1<br>MDIO LTDC DSI                      |
+| APB2 Timer Clock      | 216 MHz                           | TIM1 TIM8 TIM9 TIM10 TIM11                                                                                                                    |
 
 
 Since we want the system clock to be as much high as possible, we will select 216 MHz in `HCLK` field; once that value is entered we can just let the program calculate the other values by itself. If we don't like final result we can modify them by hand later.
@@ -309,9 +320,110 @@ int main(void)
     }
 }
 ```
-## Timers (TODO)
+## Timers
 
-Now we can execute code triggered by interrupts, however usually we want to execute code at fixed intervals of time, thus a timer is needed. To do so, we need to enable a timer from the left panel of `Pinout` tab.
+Now we can execute code triggered by interrupts, however usually we want to execute code at fixed intervals of time, thus a timer is needed.
+
+> **NOTICE**: It’s never a good idea to use the system timer inside the ARM processor (SysTick) to schedule tasks. Our systems will be developed on bare-metal microprocessors, but usually that timer is reserved to Operating Systems to do their stuff. If we'd like our code to be portable, we should design our modules using other timers. SysTick timer has a fixed 0-priority and cannot be changed.
+
+The board we use includes two advanced-control timers, eight general-purpose timers, two basic timers and two watchdog timers. All timers have a 16-bit prescaler. The following table is based on the one included in the datasheet:
+
+| Timer<br>Type        | Timer          | Clock Max<br>Frequency<br>(MHz) | Counter<br>Resolution | Counter<br>Type       | DMA<br>Request<br>Generation | Capture/<br>Compare<br>Channels |
+| -------------------- | :------------: | :-----------------------------: | --------------------- | --------------------- | :--------------------------: | :-----------------------------: |
+| Advanced-<br>Control | TIM1<br>TIM8   | 216                             | 16-bit                | Up<br>Down<br>Up/Down | Yes                          | 4                               |
+| General<br>Purpose   | TIM2<br>TIM5   | 108                             | 32-bit                | Up<br>Down<br>Up/Down | Yes                          | 4                               |
+| General<br>Purpose   | TIM3<br>TIM4   | 108                             | 16-bit                | Up<br>Down<br>Up/Down | Yes                          | 4                               |
+| General<br>Purpose   | TIM9           | 216                             | 16-bit                | Up                    | No                           | 2                               |
+| General<br>Purpose   | TIM10<br>TIM11 | 216                             | 16-bit                | Up                    | No                           | 1                               |
+| General<br>Purpose   | TIM12          | 108                             | 16-bit                | Up                    | No                           | 2                               |
+| General<br>Purpose   | TIM13<br>TIM14 | 108                             | 16-bit                | Up                    | No                           | 1                               |
+| Basic                | TIM6<br>TIM7   | 108                             | 16-bit                | Up                    | Yes                          | 0                               |
+
+### Configurable Timers Characteristics
+
+#### Advanced-Control Timers (TIM1, TIM8)
+The advanced-control timers (TIM1, TIM8) can be seen as three-phase PWM generators multiplexed on 6 channels. They have complementary PWM outputs with programmable inserted dead times. They can also be considered as complete general-purpose timers. Their 4 independent channels can be used for:
+- Input capture
+- Output compare
+- PWM generation (edge- or center-aligned modes)
+- One-pulse mode output
+
+If configured as standard 16-bit timers, they have the same features as the general-purpose TIMx timers. If configured as 16-bit PWM generators, they have full modulation capability (0-100%).
+They support independent DMA request generation. 
+
+
+#### General-Purpose Timers (TIMx)
+There are ten synchronizable general-purpose timers embedded in the STM32F76xxx devices.
+- Full-featured general-purpose timers (TIM2, TIM3, TIM4, TIM5)
+    - The TIM2 and TIM5 timers are based on a 32-bit auto-reload up/downcounter.
+    - The TIM3 and TIM4 timers are based on a 16-bit auto-reload up/downcounter.
+    - They all feature 4 independent channels for input capture/output compare, PWM or one-pulse mode output. This gives
+up to 16 input capture/output compare/PWMs ~~on the largest packages~~.
+    - They all have independent DMA request generation and they are capable of handling quadrature (incremental) encoder signals and the digital outputs from 1 to 4 hall-effect sensors.
+- Limited general-purpose timers (TIM9, TIM10, TIM11, TIM12, TIM13, TIM14)
+    - These timers are based on a 16-bit auto-reload upcounter.
+    - TIM10, TIM11, TIM13, and TIM14 feature one independent channel, whereas TIM9 and TIM12 have two independent channels for input capture/output compare, PWM or one-pulse mode output. They can also be used as simple time bases.
+
+#### Basic Timers (TIM6, TIM7)
+These timers are mainly used for DAC trigger and waveform generation. They can also be used as a generic 16-bit time base.
+TIM6 and TIM7 support independent DMA request generation.
+
+### Timer Clock Sources
+The timer always needs a clock source. It also can be synchronized by several clocks
+simultaneously:
+- Internal clock, clock is the default provided by RCC; its frequency depends wether the timer belongs to APB1 or APB2 buses.
+- External clock, in this cases the clock is provided by an external signal connected to TIx pins or ETR pin. The maximum external clock frequency should be verified.
+
+### Timer Modes for each Channel
+
+Each timer which supports one or more channels supports different modes in which these channels can be used, each with a different purpose.
+
+#### Timer Input Capure Mode
+
+The timer can be used in input capture mode to measure an external signal. Depending on timer clock, prescaler and timer resolution, the maximum measured period is deduced.
+
+The input capture module is used to capture the value of the counter after a transition is detected by the corresponding input channel. To get the external signal period, two consecutive captures are needed. The polarity index is 1 if the rising or falling edge is used, and 2 if both edges are used.
+
+#### Timer Output Compare Mode
+
+To control an output waveform, or to indicate when a period of time has elapsed, the value of the counter `CNT` is compared with respect to the content of a compare register `CRRx`, where `x` is the index of the channel.
+
+Usually a signal can be set high when the value in `CNT` is either exactly equal to~~, greater or lower than~~ the content of `CRRx`, depending on the mode. This can be used to generate multiple timed events for each period of the timer (one for each channel).
+
+#### Timer PWM Mode
+
+The timer is able to generate PWM in edge-aligned mode or in center-aligned mode with a frequency determined by the value of the `TIMx_ARR` register, and a duty cycle determined by the value of the `TIMx_CCRy` register, where `y` is the associated channel.
+
+There are two modes, the first one:
+- PWM mode 1
+    - In up-counting, channel`y` is *active* as long as `CNT < CCRy`, otherwise it is inactive.
+    - In down-counting, channel`y` is *inactive* as long as `CNT > CCRy`, otherwise it is active.
+- PWM mode 2
+    - In up-counting, channel`y` is *inactive* as long as `CNT < CCRy`, otherwise it is active.
+    - In down-counting, channel`y` is *active* as long as `CNT > CCRy`, otherwise it is inactive.
+
+When we combine these modes with the different counting modes that we can select, we obtain the following scenarios (which are also resumed in the following table):
+- if we adopt PWM mode 1 and `CNT` is reset to zero when `ARR` value is reached, then we get a *left/right-aligned PWM signal with duty cycle $\frac{CCR}{ARR}$*, where alignment depends on the counting direction, rispectively up/down.
+- if we adopt PWM mode 1 and counting mode is inverted when `CNT` reaches `ARR` or zero value, then we get a *middle-aligned PWM signal with duty cycle $\frac{CCR}{ARR}$*.
+- if we adopt PWM mode 2 and `CNT` is reset to zero when `ARR` value is reached, then we get a *right/left-aligned PWM signal with duty cycle $\frac{ARR-CCR}{ARR}=1-\frac{CRR}{ARR}$*, where alignment depends on the counting direction, rispectively up/down.
+- if we adopt PWM mode 2 and counting mode is inverted when `CNT` reaches `ARR` or zero value, then we get a *middle-aligned PWM signal with duty cycle $\frac{ARR-CCR}{ARR}=1-\frac{CRR}{ARR}$*.
+
+| PWM Mode | Counting Mode | Duty Cycle          | Alignment |
+| :------: | ------------- | :-----------------: | :-------: |
+| 1        | Up            | $\frac{CCR}{ARR}$   | left      |
+| 1        | Down          | $\frac{CCR}{ARR}$   | right     |
+| 1        | Up/Down       | $\frac{CCR}{ARR}$   | middle    |
+| 2        | Up            | 1-$\frac{CCR}{ARR}$ | right     |
+| 2        | Down          | 1-$\frac{CCR}{ARR}$ | left      |
+| 2        | Up/Down       | 1-$\frac{CCR}{ARR}$ | middle    |
+
+#### Timer One Pulse Mode
+
+If needed, refer to [STM32 cross-series timer overview](https://www.st.com/content/ccc/resource/technical/document/application_note/54/0f/67/eb/47/34/45/40/DM00042534.pdf/files/DM00042534.pdf/jcr:content/translations/en.DM00042534.pdf) (also known as *Application Note AN4013*), section 2.6.
+
+## Configuring a Timer (TODO)
+
+To do so, we need to enable a timer from the left panel of `Pinout` tab.
 
 Following is the configuration needed to enable `TIM1` timer:
 
@@ -326,7 +438,7 @@ Following is the configuration needed to enable `TIM1` timer:
 
 
 
-> **NOTICE**: It’s never a good idea to use the system timer inside the ARM processor (SysTick) to schedule tasks. Our systems will be developed on bare-metal microprocessors, but usually that timer is reserved to Operating Systems to do their stuff. If we'd like our code to be portable, we should design our modules using other timers. SysTick timer has a fixed 0-priority and cannot be changed.
+
 
 Once the timer is enabled we can change its settings under `Configuration` tab.
 
