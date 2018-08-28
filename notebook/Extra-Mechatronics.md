@@ -386,13 +386,20 @@ The input capture module is used to capture the value of the counter after a tra
 
 #### Timer Output Compare Mode
 
-To control an output waveform, or to indicate when a period of time has elapsed, the value of the counter `CNT` is compared with respect to the content of a compare register `CRRx`, where `x` is the index of the channel.
+To control an output waveform, or to indicate when a period of time has elapsed, the value of the counter `CNT` is compared with respect to the content of a compare register `CRRy`, where `y` is the index of the channel.
 
-Usually a signal can be set high when the value in `CNT` is either exactly equal to~~, greater or lower than~~ the content of `CRRx`, depending on the mode. This can be used to generate multiple timed events for each period of the timer (one for each channel).
+Usually a signal can be set high when the value in `CNT` is either exactly equal to ~~, greater or lower than~~ the content of `CRRy`. 
+When `CNT` reaches the value stored into `CCRy` a compare event is
+generated and, on the basis of a configuration,
+- the output is set
+- the output is reset
+- the output is toggled
 
 #### Timer PWM Mode
 
 The timer is able to generate PWM in edge-aligned mode or in center-aligned mode with a frequency determined by the value of the `TIMx_ARR` register, and a duty cycle determined by the value of the `TIMx_CCRy` register, where `y` is the associated channel.
+
+> Duty cycle is expressed through `TIMx_ARR` and `TIMx_CRRy` content in time units.
 
 There are two modes, the first one:
 - PWM mode 1
@@ -402,20 +409,24 @@ There are two modes, the first one:
     - In up-counting, channel`y` is *inactive* as long as `CNT < CCRy`, otherwise it is active.
     - In down-counting, channel`y` is *active* as long as `CNT > CCRy`, otherwise it is inactive.
 
-When we combine these modes with the different counting modes that we can select, we obtain the following scenarios (which are also resumed in the following table):
-- if we adopt PWM mode 1 and `CNT` is reset to zero when `ARR` value is reached, then we get a *left/right-aligned PWM signal with duty cycle $\frac{CCR}{ARR}$*, where alignment depends on the counting direction, rispectively up/down.
-- if we adopt PWM mode 1 and counting mode is inverted when `CNT` reaches `ARR` or zero value, then we get a *middle-aligned PWM signal with duty cycle $\frac{CCR}{ARR}$*.
-- if we adopt PWM mode 2 and `CNT` is reset to zero when `ARR` value is reached, then we get a *right/left-aligned PWM signal with duty cycle $\frac{ARR-CCR}{ARR}=1-\frac{CRR}{ARR}$*, where alignment depends on the counting direction, rispectively up/down.
-- if we adopt PWM mode 2 and counting mode is inverted when `CNT` reaches `ARR` or zero value, then we get a *middle-aligned PWM signal with duty cycle $\frac{ARR-CCR}{ARR}=1-\frac{CRR}{ARR}$*.
 
-| PWM Mode | Counting Mode | Duty Cycle          | Alignment |
-| :------: | ------------- | :-----------------: | :-------: |
-| 1        | Up            | $\frac{CCR}{ARR}$   | left      |
-| 1        | Down          | $\frac{CCR}{ARR}$   | right     |
-| 1        | Up/Down       | $\frac{CCR}{ARR}$   | middle    |
-| 2        | Up            | 1-$\frac{CCR}{ARR}$ | right     |
-| 2        | Down          | 1-$\frac{CCR}{ARR}$ | left      |
-| 2        | Up/Down       | 1-$\frac{CCR}{ARR}$ | middle    |
+
+When we combine these modes with the different counting modes that we can select, we obtain the following scenarios (which are also resumed in the following table):
+- if we adopt PWM mode 1 and `CNT` is reset to zero when `ARR` value is reached, then we get a *left/right-aligned PWM signal with duty cycle ![CRR/ARR](https://latex.codecogs.com/svg.latex?\tiny&space;\frac{CCR}{ARR})*, where alignment depends on the counting direction, rispectively up/down.
+- if we adopt PWM mode 1 and counting mode is inverted when `CNT` reaches `ARR` or zero value, then we get a *middle-aligned PWM signal with duty cycle ![CRR/ARR](https://latex.codecogs.com/svg.latex?\tiny&space;\frac{CCR}{ARR})*.
+- if we adopt PWM mode 2 and `CNT` is reset to zero when `ARR` value is reached, then we get a *right/left-aligned PWM signal with duty cycle ![1-CRR/ARR](https://latex.codecogs.com/svg.latex?\tiny&space;\frac{ARR-CCR}{ARR}=1-\frac{CRR}{ARR})*, where alignment depends on the counting direction, rispectively up/down.
+- if we adopt PWM mode 2 and counting mode is inverted when `CNT` reaches `ARR` or zero value, then we get a *middle-aligned PWM signal with duty cycle ![1-CRR/ARR](https://latex.codecogs.com/svg.latex?\tiny&space;\frac{ARR-CCR}{ARR}=1-\frac{CRR}{ARR})*.
+
+| PWM Mode | Counting Mode | Duty Cycle                                                                        | Alignment |
+| :------: | ------------- | :-------------------------------------------------------------------------------: | :-------: |
+| 1        | Up            | ![CRR/ARR](https://latex.codecogs.com/svg.latex?\tiny&space;\frac{CRR}{ARR})     | left      |
+| 1        | Down          | ![CRR/ARR](https://latex.codecogs.com/svg.latex?\tiny&space;\frac{CRR}{ARR})     | right     |
+| 1        | Up/Down       | ![CRR/ARR](https://latex.codecogs.com/svg.latex?\tiny&space;\frac{CRR}{ARR})     | middle    |
+| 2        | Up            | ![1-CRR/ARR](https://latex.codecogs.com/svg.latex?\tiny&space;1-\frac{CRR}{ARR}) | right     |
+| 2        | Down          | ![1-CRR/ARR](https://latex.codecogs.com/svg.latex?\tiny&space;1-\frac{CRR}{ARR}) | left      |
+| 2        | Up/Down       | ![1-CRR/ARR](https://latex.codecogs.com/svg.latex?\tiny&space;1-\frac{CRR}{ARR}) | middle    |
+
+> **NOTICE**: I'm not 100% sure, but maybe duty cycle is actually based on the fraction ![(CRR+1)/(ARR+1)](https://latex.codecogs.com/svg.latex?\tiny&space;\frac{CRR+1}{ARR+1}), I should check in the future.
 
 #### Timer One Pulse Mode
 
