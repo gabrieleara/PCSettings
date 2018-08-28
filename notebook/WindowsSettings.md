@@ -381,13 +381,14 @@ Required drivers are the following ones:
 
 ### Plugins Configuration
 - The Great Suspender:
-	- Automatically Suspend: **30 minutes**
+	- Automatically suspend: **30 minutes**
+	- Never suspend tabs when offline: **ON**
 	- Keyboard Shortcuts > Remap Keys > Delete any mapping
 	- Whitelist:
 ```
-facebook.com
-google.com 
-TODO
+.facebook.com
+.google.com
+.google.it
 ```
 	
 - Feedly:
