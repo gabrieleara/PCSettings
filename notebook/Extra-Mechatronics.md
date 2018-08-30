@@ -36,7 +36,8 @@ This guide assumes that you already followed the steps defined in [this document
     - [Configuring a Timer using Cube](#configuring-a-timer-using-cube)
         - [Timer Counter Settings](#timer-counter-settings)
             - [Example: Calculating the Required Values](#example-calculating-the-required-values)
-        - [Timer Interrupt Generation Settings (TODO)](#timer-interrupt-generation-settings-todo)
+        - [Timer Interrupt Generation Settings](#timer-interrupt-generation-settings)
+            - [Example: Producing Periodic Data Using Interrupts](#example-producing-periodic-data-using-interrupts)
         - [Timer DMA Generation Settings (TODO)](#timer-dma-generation-settings-todo)
         - [Timer Output Compare Settings (TODO)](#timer-output-compare-settings-todo)
         - [Timer PWM Mode Settings (TODO)](#timer-pwm-mode-settings-todo)
@@ -305,10 +306,14 @@ static char text[] = "HelloWorldIT\r\n";
 /* USER CODE BEGIN 0 */
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
-    /* Interrupt-based transmit has no timeout,
-     * since it's not blocking.
-     */
-    HAL_UART_Transmit_IT(&huart3, (unsigned char*) text, strlen(text));
+    /* The callback is the same for any UART handler. */
+    if(huart == &huart3)
+    {
+        /* Interrupt-based transmit has no timeout,
+         * since it's not blocking.
+         */
+        HAL_UART_Transmit_IT(&huart3, (unsigned char*) text, strlen(text));
+    }
 }
 /* USER CODE END 0 */
 
@@ -514,7 +519,204 @@ RCR = 1     - 1 = 0
 
 Then we need to remember to set the counting direction to up and the *Auto Reload Preload* as enabled.
 
-### Timer Interrupt Generation Settings (TODO)
+### Timer Interrupt Generation Settings
+A timer can be used to generate interrupts when an event is reached within any of its channels. To do so, we need first to enable the interrupt generation for that timer from within Cube, and then we need to start the timer from our user code.
+
+When inside a timer configuration window, select the `NVIC Settings` tab to enable the required interrupts.
+There are many choices, and often some interrupt kinds are overlapped between more than one timer, as we can see from the following picture.
+
+![Timer NVIC Settings](mec-pics/20.png "Timer NVIC Settings tab  example")
+
+Usually we want to enable the entry `TIMx update interrupt`, even if it may overlap with other timers like in the figure. After enabling it, remember to go into `NVIC Configuration Window` and change its priority.
+
+Of course, enabling only the capability of generating interrupts is not enough, we need to start the timer from our code if we want to use it.
+
+To do so, we can use the following call:
+``` c
+HAL_TIM_Base_Start_IT(&htim1);
+```
+
+The same function without the `_IT` prefix can be used to start a timer, but it won't generate interrupts.
+
+Once we start the timer in interrupt mode it will call an interrupt handler that we can define. The name of the handler depends on the interrupt we enabled and usually its location is within `stm32f7xx_it.c` file. In the case of the previous example it will be:
+``` c
+void TIM1_UP_TIM10_IRQHandler(void )
+{
+    /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 0*/
+
+    /* USER CODE END TIM1_UP_TIM10_IRQn 0*/
+
+    HAL_TIM_IRQHandler(&htim1);
+    
+    /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 1 */
+
+    /* USER CODE END TIM1_UP_TIM10_IRQn 1 */
+}
+```
+
+Our code of course will need to be within `BEGIN/END` pairs, or it will be overwritten. The call in the middle resets the interrupt line of the specified timer.
+
+#### Example: Producing Periodic Data Using Interrupts
+
+Suppose we want to produce periodically some data using a task and then send it as soon as possible over the serial communication. To do so, we need a mechanism that can be used to communicate between the periodic task (activated by a timer) and the infinite loop (which will send data on the serial line as soon as possible).
+
+Since we don't like to have too much code within auto-generated files, let's create a file called `code.c` and its header file `code.h`, which will be used to access `code.c` functions from outside, since we'll call them either from main loop or from interrupt handlers.
+
+Our `code.c` file will contain a few (private) shared variables and some public functions. The following is the complete file:
+
+``` c
+/* ----------------- INCLUDES ------------------ */
+
+#include <string.h>
+#include "stm32f7xx_hal.h"
+#include "code.h"
+
+/* -------------- EXTERN VARIABLES ------------- */
+
+extern UART_HandleTypeDef huart3;
+
+
+/* ------------- PRIVATE VARIABLES ------------- */
+
+/* The shared buffer and its dimension */
+#define BUFFER_LENGTH 1024
+
+static const size_t buffer_len = BUFFER_LENGTH;
+static uint8_t buffer[BUFFER_LENGTH];
+
+#undef BUFFER_LENGTH
+
+/* The pointer to the first data to be sent */
+static uint32_t start = 0;
+
+/* The pointer to the position next to the last
+ * character to be sent
+ */
+static uint32_t stop = 0;
+
+
+/* ------------- PUBLIC FUNCTIONS -------------- */
+
+/* Function called within infinite loop to consume
+ * data as soon as possible.
+ */
+void nrtcycle()
+{
+    uint32_t len = stop - start;
+
+    /* If there is no data to be sent */
+    if (len == 0)
+        return;
+
+    /* If there is data to be sent, let's check whether
+     * the data can be sent all in one run or it shall be
+     * sent in two transmits (i.e. data overflows from the
+     * buffer and starts again from the beginning).
+     */
+    if (stop > start)
+    {
+        /* Data can be all sent in one transmit */
+        HAL_UART_Transmit(&huart3, &buffer[start], len, len);
+        start += len;
+    }
+    else
+    {
+        /* Data is split, let's send as much as we can
+         * and then start over from the first position.
+         */
+        len = buffer_len - start;
+        HAL_UART_Transmit(&huart3, &buffer[start], len, len);
+        start = 0;
+    }
+}
+
+
+/* Function called periodically to produce data. */
+void intcycle()
+{
+    /* USER CODE BEGIN */
+    static char my_data[] = "INT: XXX seconds elapsed\r\n";
+    static uint8_t counter = 0;
+
+    ++counter;
+
+    sprintf(my_data, "INT: %03u seconds elapsed\r\n", counter);
+
+    /* USER CODE END */
+
+    /* NOTICE: We don't need to send the string
+     * termination character.
+     */
+    bwrite((uint8_t*) my_data, strlen(my_data));
+}
+
+/* NOTICE: in this function we assume we never overrun
+ * the buffer (overwrite old data yet to be sent).
+ */
+void bwrite(uint8_t data[], uint32_t len)
+{
+    uint32_t last = stop + len;
+    uint32_t remaining = buffer_len - stop;
+
+    /* Can we copy all data before reaching
+     * the end of the buffer?
+     */
+    if (last < buffer_len)
+    {
+        /* We can copy all the data in one attempt */
+        memcpy(&buffer[stop], data, len); // buffer_len - stop
+        stop = last;
+    }
+    else
+    {
+        /* We first copy as much as we can */
+        memcpy(&buffer[stop], data, remaining);
+
+        /* Then we copy the remaining data. */
+        memcpy(&buffer[0], &data[remaining], len - remaining);
+
+        /* New position is the remainder */
+        stop = len - remaining;
+
+        /* Or equivalently:
+        stop = last % buffer_len;
+        */
+    }
+}
+```
+
+Functions `nrtcycle` and `intcycle` (or optionally even `bwrite`) can be called from within other files. Thus, the following is the content of `code.h` header file:
+
+``` c
+#ifndef CODE_H
+#define CODE_H
+
+/* ----------------- INCLUDES ------------------ */
+
+#include <stdlib.h>
+#include <stdint.h>
+
+/* ------------- PUBLIC FUNCTIONS -------------- */
+
+/* Function called within infinite loop to consume
+ * data as soon as possible.
+ */
+extern void nrtcycle();
+
+/* Function called periodically to produce data. */
+extern void intcycle();
+
+/* NOTICE: in this function we assume we never overrun
+ * the buffer (overwrite old data yet to be sent).
+ */
+extern void bwrite(uint8_t data[], uint32_t len);
+
+#endif
+```
+
+> **NOTICE**: we cannot produce data for a dimension bigger than the buffer itself, we would probably go in buffer overflow condition wen we perform the second `memcpy` in the `else` block.
+
+Of course, we can add more functions if we prefer to produce data from our `code.c` file. Usually we can put that code within `BEGIN/END` markers, but it is not a strict requirement this time.
 
 ### Timer DMA Generation Settings (TODO)
 
