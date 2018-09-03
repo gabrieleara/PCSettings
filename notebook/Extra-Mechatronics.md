@@ -40,9 +40,9 @@ This guide assumes that you already followed the steps defined in [this document
             - [Example: Producing Periodic Data Using Interrupts](#example-producing-periodic-data-using-interrupts)
             - [Example: Sending Periodically Data to MATLAB](#example-sending-periodically-data-to-matlab)
             - [Example: Generating Code from Simulink](#example-generating-code-from-simulink)
-        - [Timer DMA Generation Settings (TODO)](#timer-dma-generation-settings-todo)
         - [Timer Output Compare Settings (TODO)](#timer-output-compare-settings-todo)
         - [Timer PWM Mode Settings (TODO)](#timer-pwm-mode-settings-todo)
+    - [Using DMA](#using-dma)
 
 # Installing Software
 
@@ -271,6 +271,13 @@ where:
 - `4` is the timeout, expressed in ~~milliseconds~~ **_???_**.
 
 If we now start PuTTY on Windows and we select the correct port with the settings we put in our USART3 configuration we can read the values. The right port name can be found if we open `Device Manager` on Windows, under `Serial Ports (COM and LPT)`.
+
+While this example used blocking API to transfer data, there are two ways to transfer them asynchronously, either using *Interrupts* or *DMA*.
+
+> **NOTICE**: Remember that when transferring data between memory and peripherals, not only in asynchronous mode using either `IT` or `DMA` modes, but also for blocking API calls, the memory location that has been specified in the call shall remain untouched until the data transfer has been completed. This means that **no automatic variables can be used to transfer data from memory to peripherals**, because automatic variables live in stack space and thus their memory location is most likely overwritten
+> - when the current function terminates and another function call is performed;
+> - when an interrupt arrives and the current function execution is preemtped (this happens even when using blocking API calls).
+> That's why only `static` variables or global variables should be used to send/receive data.
 
 ## Interrupts and USART3 Interrupt API
 
@@ -1026,8 +1033,28 @@ The result is the following one:
 
 ![Final Result](mec-pics/34.png "Plot obtained from data received from the board")
 
-### Timer DMA Generation Settings (TODO)
-
 ### Timer Output Compare Settings (TODO)
 
 ### Timer PWM Mode Settings (TODO)
+
+## Using DMA
+
+DMA is a way to transfer data from main memory to peripherals without involving the microprocessor. To do so, two *DMA Agents* are present on our board, each allowing us to program up to 8 different tasks.
+
+We'll use DMA mainly to move data from main memory to USART and vice versa. To enable DMA for USART3 peripheral we need to enable a *DMA Request* from within Cube. To do so, we can configure it either from USART3 or DMA configuration windows, both inside `Configuration` tab.
+
+Once one of these windows is opened we can add a new DMA Task clicking on `Add` and then configuring the type of request (between `USART3_TX` and `USART3_RX`), the memory stream to use, stream direction and so on, like in the following picture:
+
+![Enabling USART3 DMA](mec-pics/35.png "Add a new DMA task for USART3_Tx")
+
+In the bottom of the window we can configure which `Mode` we want to use between `Normal` or `Circular` (when there is no data left, start again from the first), how much we want to increment when transfering data both in memory and in the peripheral address and the amount of data we want to transfer in each transaction.
+
+When we transfer data to USART peripheral we can only transfer one byte at the time, because USART protocol allows only the exchange of one byte per message, however if we use a different peripheral chosing to transfer one entire word instead of a single byte can speed up greatly the DMA trasnfer.
+
+> **NOTICE**: In certain architectures, DMA transfers do not even load the memory bus, because modern buses are no more simple lines connecting all the peripherals, but they are structured in a *matricial* form, so that most of the times data tranfers won't interfere with each other. For example, RAM is directly connected to the microcontroller, but many other lines can connect memory to other peripherals without interfering with the processor. That's why DMA is so important, we can remove some workload from the microprocessor and at the same time the bus will be less occupied to do these transactions, speeding up our program greatly.
+
+Once we finished configuring DMA for USART3 we can generate once again code for our application and change all asynchronous data transfers from interrupt-based data transfers to DMA ones like the following example:
+``` c
+HAL_UART_Transmit_DMA(&huart3, &message, length*sizeof(char));
+```
+and that's it.
