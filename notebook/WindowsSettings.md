@@ -80,6 +80,7 @@ _A simple long reminder_
 	- [Caffeinated](#caffeinated)
 	- [Tree Size Free](#tree-size-free)
 	- [Etcher](#etcher)
+	- [WinMD5](#winmd5)
 - [Start Menu](#start-menu)
 - [Extra](#extra)
 
@@ -552,6 +553,12 @@ Required drivers are the following ones:
 ## Etcher
 - Download Link: https://etcher.io/ (pick portable version)
 - Copy the file in `"C:\Tools\"`
+- Create a Desktop Shortcut
+- Move the new shortcut to `"C:\Users\gabriele\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Tools"`
+
+## WinMD5
+- Download Link: http://www.winmd5.com/download/winmd5free.zip
+- Extract the `.exe` file in `"C:\Tools\"`
 - Create a Desktop Shortcut
 - Move the new shortcut to `"C:\Users\gabriele\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Tools"`
 
