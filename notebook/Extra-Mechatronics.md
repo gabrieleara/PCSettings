@@ -38,6 +38,8 @@ This guide assumes that you already followed the steps defined in [this document
             - [Example: Calculating the Required Values](#example-calculating-the-required-values)
         - [Timer Interrupt Generation Settings](#timer-interrupt-generation-settings)
             - [Example: Producing Periodic Data Using Interrupts](#example-producing-periodic-data-using-interrupts)
+            - [Example: Sending Periodically Data to MATLAB](#example-sending-periodically-data-to-matlab)
+            - [Example: Generating Code from Simulink](#example-generating-code-from-simulink)
         - [Timer DMA Generation Settings (TODO)](#timer-dma-generation-settings-todo)
         - [Timer Output Compare Settings (TODO)](#timer-output-compare-settings-todo)
         - [Timer PWM Mode Settings (TODO)](#timer-pwm-mode-settings-todo)
@@ -635,12 +637,12 @@ void nrtcycle()
 void intcycle()
 {
     /* USER CODE BEGIN */
-    static char my_data[] = "INT: XXX seconds elapsed\r\n";
+    static char my_data[] = "DCSM:XXX seconds elapsed\r\n";
     static uint8_t counter = 0;
 
     ++counter;
 
-    sprintf(my_data, "INT: %03u seconds elapsed\r\n", counter);
+    sprintf(my_data, "DCSM:%03u seconds elapsed\r\n", counter);
 
     /* USER CODE END */
 
@@ -664,7 +666,7 @@ void bwrite(uint8_t data[], uint32_t len)
     if (last < buffer_len)
     {
         /* We can copy all the data in one attempt */
-        memcpy(&buffer[stop], data, len); // buffer_len - stop
+        memcpy(&buffer[stop], data, len);
         stop = last;
     }
     else
@@ -717,6 +719,312 @@ extern void bwrite(uint8_t data[], uint32_t len);
 > **NOTICE**: we cannot produce data for a dimension bigger than the buffer itself, we would probably go in buffer overflow condition wen we perform the second `memcpy` in the `else` block.
 
 Of course, we can add more functions if we prefer to produce data from our `code.c` file. Usually we can put that code within `BEGIN/END` markers, but it is not a strict requirement this time.
+
+#### Example: Sending Periodically Data to MATLAB
+
+In previous example we sent each second a string formatted as `"DCSM:XXX seconds elapsed\r\n"`, where `XXX` is the print of the number of seconds elapsed (of course it starts again when 256 is reached). While we obviously can read this data from PuTTY or HTerm, we can receive it even from MATLAB. To do so we need to start Simulink and add a few blocks:
+- *Serial Configuration* - configures all the parameters that are associated to a serial port.
+- *Serial Receive* - configures parameters of the protocol used to exchange data over USART.
+- *Serial Send* - it can be used to send formatted data through the same port.
+
+If we just want to receive data from our previous example we can create the following model:
+
+![Receiver Simulink Model](mec-pics/21.png "This model is able to receive strings from USART")
+
+The Serial Configuration Block (on the top) is configured as it follows:
+
+![Serial Configuration Block](mec-pics/22.png "Configuration for COM3 serial port")
+
+The Serial Receive Block (on the bottom) sends out data when both `Header` and `Terminator` configurations match (if set) and the data is the dimension specified in `Data size`. In our case, our strings have a fixed dimension of 19 characters between the header and the terminator. When no data is received or there is an error we can decide what to send outside, in this case we decided to send a `'\0'` ASCII value (`32`).
+
+![Serial Receive Block](mec-pics/23.png "Configuration of the protocol used to exchange data over COM3 serial port")
+
+Now if we press `Run` we can read on the Display Block the data we received from the board.
+
+#### Example: Generating Code from Simulink
+As we already mentioned, data can be exchanged in both directions between the board and MATLAB. This can come in handy when we want to simulate a motor for example in MATLAB and control it using the board.
+
+However often we don't want to send plain ASCII text between the board and MATLAB. To do so we need to define a data structure such that its definition is shared between the code that will run on the board and the Simulink model.
+
+What we need is a Simulink Bus, which is the equivalent of a C data structure. When definied within Simulink, we can use the *code generation tool* to generate the data structure definition and even what the board will have to do, for example when trying to control a motor.
+
+For this example, suppose we defined a Simulink model that represents the evolution over time of a physical projectile. Out initial Simulink model is the following:
+
+![Projectile Model](mec-pics/24.png "Example of a simple simulink model")
+
+Let's first wrap it into a Subsystem, for which we can even use a mask to configure parameters, like this:
+![Subsystem Model](mec-pics/25.png "Example of a subsystem content")
+![Outer Model](mec-pics/26.png "Previous example with subsystem")
+![Subsystem Mask](mec-pics/27.png "Example of a mask for a subsystem")
+
+We are not done yet, to transfer data from the board to MATLAB we need to define a simulink bus (structure) and make sure that the model will write into that data structure.
+
+To define a new Simulink bus open `Edit > Bus Editor` and then define it. To do so, create a new bus and then add more elements until you match how many data you want to transfer. Also, remember that for floating point data is highly recommended to use `single` precision, since `double` precision is not fully hardware supported in our boards **[is this true?]**.
+
+![Bus Editor](mec-pics/28.png "Example of a bus structure")
+
+> **NOTICE**: Remember to export the bus to a `.m` file, because buses are not saved along with Simulink models, they must be manually loaded into MATLAB workspace.
+
+Then let's include it in our model using *Data Store Memory*, *Data Store Read* and *Data Store Write* blocks. This way, our generated code will write into a global data structure its output values and we can read that data structure and send back data to Matlab. However, notice that for code generation a *Data Store Memory* block generates a *local* data store, which is not exported outiside the model (and thus cannot be accessed from outside the model when we generate code). To avoid this, we need to create a *global* data store programmatically:
+
+``` sh
+StmToMatlabData = Simulink.Signal;
+StmToMatlabData.DataType   = 'Bus: StmToMatlab';
+StmToMatlabData.Dimensions = 1;              # Dimensions and Complexity 
+StmToMatlabData.Complexity = 'real';         # must be set explicitly
+```
+
+![Data Store Read/Write](mec-pics/29.png "Previous example with the use of a bus and Data Store Read/Write")
+
+We now need to generate code. To do so we need to setup Code Generation Tool a little first. Go into `Configuration > Code Generation` and change the `System target file` to `ert.tlc`, which corresponds to the *Embedded Coder* System specification. Then select also `Generate Code Only`, since we'll have to compile the code using System Workbench.
+
+![Code Generation Settings](mec-pics/30.png "Set ert.tlc target file and check Generate code only option")
+
+Before generating code, let's comment the blocks that won't run on the board (the ones on the receiving side of the Data Store). Otherwise we can just create a subsystem comprehending all the components that we want to use and generate code only for that subsystem.
+
+To generate code we can then go under `Code` menu and select `Embedded Coder Quick Start`, with which we can select our architecture and other characteristics our generated code will have. Once code is generated we a new folder called `ModelName_ert_rtw` in which there are the following files (among the others):
+- ModelName.c
+- ModelName_data.c (optional?)
+- ModelName.h
+- rtwtypes.h
+
+In our case, the name of the model was `ProjectileSimulator`.
+
+Let's now proceed to add these files to our System Workbench project by drag-and-dropping them from the File Manager to System Workbench. We could even add them as hyperlinks, so that we don't need to copy them each time we re-generate code, however, I couldn't manage to make this work quickly (builds fail) thus I suggest you to copy files if needed.
+
+Now we can use the functions and global variables defined in `ProjectileSimulator.h` from within our code.
+
+> **NOTICE**: Also, remember to match the execution rate of `intcycle` function to the sample time required by Simulink by editing the information in Cude and re-generate code if needed. Double-check this, it's extremely important!
+
+The code of our project shall be changed as it follows (assuming code is put within proper spaces in automatically-generated files from Cube):
+- `main.c`
+
+``` c
+//...
+#include "code.h"
+
+int main()
+{
+    // ...
+
+    init();
+    HAL_TIM_Base_Start_IT(&htim1);
+
+    // ...
+    
+    while(1) {
+        nrtcycle();
+    }
+}
+```
+
+- `stm32f7xx_it.c`
+
+``` c
+// ...
+#include "code.h"
+
+void TIM1_UP_TIM10_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 0 */
+	intcycle();
+
+  /* USER CODE END TIM1_UP_TIM10_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim1);
+  /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 1 */
+
+  /* USER CODE END TIM1_UP_TIM10_IRQn 1 */
+}
+```
+
+- `code.h`
+
+``` c
+#ifndef CODE_H
+#define CODE_H
+
+/* ----------------- INCLUDES ------------------ */
+
+#include <stdlib.h>
+#include <stdint.h>
+
+/* ------------- PUBLIC FUNCTIONS -------------- */
+
+/* Performs system initialization, if needed. */
+extern void init();
+
+/* Function called within infinite loop to consume
+ * data as soon as possible.
+ */
+extern void nrtcycle();
+
+/* Function called periodically to produce data. */
+extern void intcycle();
+
+/* NOTICE: in this function we assume we never overrun
+ * the buffer (overwrite old data yet to be sent).
+ */
+extern void bwrite(uint8_t data[], uint32_t len);
+
+#endif
+```
+
+- `code.c`
+
+``` c
+/* ----------------- INCLUDES ------------------ */
+
+#include <string.h>
+#include "stm32f7xx_hal.h"
+#include "code.h"
+
+#include "ProjectileSimulator.h"
+
+/* -------------- EXTERN VARIABLES ------------- */
+
+extern UART_HandleTypeDef huart3;
+
+
+/* ------------- PRIVATE VARIABLES ------------- */
+
+/* The shared buffer and its dimension */
+#define BUFFER_LENGTH 1024
+
+static const size_t buffer_len = BUFFER_LENGTH;
+static uint8_t buffer[BUFFER_LENGTH];
+
+#undef BUFFER_LENGTH
+
+/* The pointer to the first data to be sent */
+static uint32_t start = 0;
+
+/* The pointer to the position next to the last
+ * character to be sent
+ */
+static uint32_t stop = 0;
+
+
+/* ------------- PUBLIC FUNCTIONS -------------- */
+
+/* Performs system initialization, if needed. */
+void init()
+{
+	ProjectileSimulator_initialize();
+}
+
+/* Function called within infinite loop to consume
+ * data as soon as possible.
+ */
+void nrtcycle()
+{
+    uint32_t len = stop - start;
+
+    /* If there is no data to be sent */
+    if (len == 0)
+        return;
+
+    /* If there is data to be sent, let's check whether
+     * the data can be sent all in one run or it shall be
+     * sent in two transmits (i.e. data overflows from the
+     * buffer and starts again from the beginning).
+     */
+    if (stop > start)
+    {
+        /* Data can be all sent in one transmit */
+        HAL_UART_Transmit(&huart3, &buffer[start], len, len);
+        start += len;
+    }
+    else
+    {
+        /* Data is split, let's send as much as we can
+         * and then start over from the first position.
+         */
+        len = buffer_len - start;
+        HAL_UART_Transmit(&huart3, &buffer[start], len, len);
+        start = 0;
+    }
+}
+
+typedef struct
+{
+	char header[4];
+	int8_t body[sizeof(StmToMatlab)];
+
+} usart_data;
+
+/* Function called periodically to produce data. */
+void intcycle()
+{
+    /* USER CODE BEGIN */
+
+	// We initialize our structure to contain
+	// the header "DCSM"
+	static usart_data message = {
+			.header = {'D', 'C', 'S', 'M'}
+	};
+
+	ProjectileSimulator_step();
+
+    /* USER CODE END */
+	// We copy the global data structure into our message body
+	memcpy(&message.body, &StmToMatlabData, sizeof(StmToMatlab));
+
+    /* NOTICE: We don't need to send the string
+     * termination character.
+     */
+    bwrite((uint8_t*) &message, sizeof(usart_data));
+}
+
+/* NOTICE: in this function we assume we never overrun
+ * the buffer (overwrite old data yet to be sent).
+ */
+void bwrite(uint8_t data[], uint32_t len)
+{
+    uint32_t last = stop + len;
+    uint32_t remaining = buffer_len - stop;
+
+    /* Can we copy all data before reaching
+     * the end of the buffer?
+     */
+    if (last < buffer_len)
+    {
+        /* We can copy all the data in one attempt */
+        memcpy(&buffer[stop], data, len);
+        stop = last;
+    }
+    else
+    {
+        /* We first copy as much as we can */
+        memcpy(&buffer[stop], data, remaining);
+
+        /* Then we copy the remaining data. */
+        memcpy(&buffer[0], &data[remaining], len - remaining);
+
+        /* New position is the remainder */
+        stop = len - remaining;
+
+        /* Or equivalently:
+        stop = last % buffer_len;
+        */
+    }
+}
+```
+
+The final step is to receive data within Matlab. To do so, we'll merge both the serial receiver we used in the previous example and the plotting part of the `ProjectileSimulator` model. The resulting model is the following, where the *Byte Unpack* block has been used to convert data from an array of bytes to an array of `single`-precision values (but it can have any structured shape, since we can convert to a MATLAB cell-array data structure).
+
+![Projectile Simulator Receiver](mec-pics/31.png "Scheme of the receiving end")
+
+
+Follwing pictures show configuration of *Serial Receive* block and *Byte Unpack* block. The number of bytes of the message is due to the fact that single precision is implemented as `real32_T` in Simulink-generated code under our configuration.
+
+![Serial Receive Block Configuration](mec-pics/32.png "Serial Receive Block Configuration")
+![Byte Unpack Block Configuration](mec-pics/33.png "Byte Unpack Block Configuration")
+
+The sampling time is set to -1 because we set a global sampling time in Simulink model configuration. We didn't use variable step size.
+
+The result is the following one:
+
+![Final Result](mec-pics/34.png "Plot obtained from data received from the board")
 
 ### Timer DMA Generation Settings (TODO)
 
