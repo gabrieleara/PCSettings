@@ -29,7 +29,7 @@ This guide assumes that you already followed the steps defined in [this document
             - [Basic Timers (TIM6, TIM7)](#basic-timers-tim6-tim7)
         - [Timer Clock Sources](#timer-clock-sources)
         - [Timer Modes for each Channel](#timer-modes-for-each-channel)
-            - [Timer Input Capure Mode](#timer-input-capure-mode)
+            - [Timer Input Capture Mode](#timer-input-capture-mode)
             - [Timer Output Compare Mode](#timer-output-compare-mode)
             - [Timer PWM Mode](#timer-pwm-mode)
             - [Timer One Pulse Mode](#timer-one-pulse-mode)
@@ -58,14 +58,14 @@ Just install it.
 ## HTerm
 - Extract `HTerm.exe` inside `"C:\Tools\"`
 - Create a Desktop Shortcut
-- Move the new shortcut to `"C:\Users\gabriele\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Tools"`
+- Move the new shortcut to `"C:\Users\username\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Tools"`
 
 ## STM32 CubeMX
 Extract the zip file and execute the Windows Installer, accept everything as-is.
 
 ## STM32 System Workbench
 
-Execute the installer, change installation path with `C:\Program Files\Ac6\SystemWorkbench` (for 64-bit version, for 32-bit `C:\Program Files (x86)\Ac6\SystemWorkbench`), then accpet everything else as-is.
+Execute the installer, change installation path with `C:\Program Files\Ac6\SystemWorkbench` (for 64-bit version, for 32-bit `C:\Program Files (x86)\Ac6\SystemWorkbench`), then accept everything else as-is.
 
 > **NOTICE**: Installing System Workbench to a directory under `Program Files` (or its equivalent `Program Files (x86)`) leads to problems with permissions when using the program, since common users cannot write/modify content under subfolders of `Program Files`. Thus, either install it under another directory (example: `C:\Ac6\SystemWorkbench`) or change its permissions before opening the program.
 
@@ -122,7 +122,7 @@ Once settings are saved, we can use the configuration to generate code comprehen
 When programming a microcontroller, the size of the stack is really important. Since most of the code will be *interrupt-driven*, each call will consume stack to save the states of the registers to restore them later when the interrupt handler terminates.
 
 The number of registers that will be saved may vary from call to call, but usually we have two cases:
-- If the interrupt doesn't use any *floating-point arythmetic*, only 8 registers are pushed on the stack;
+- If the interrupt doesn't use any *floating-point arithmetic*, only 8 registers are pushed on the stack;
 - Otherwise, 32 registers are pushed on the stack.
 
 Since in general for multithreaded applications pretty much the whole code is interrupt-driven, we will consume a lot of stack for each call. This could lead to stack overlapping with the `.DATA` part of our program if we don’t select enough stack size in `Project Settings`.
@@ -185,7 +185,7 @@ Now let's look at the right side of the scheme and decide which values we want a
 > Clocks and timers within a Cortex processor are connected to various different clock sources, all delivered starting from the clock source provided on the left. These clock sources are:
 > - `HCLK`: is the actual processor clock source and it drives SysTick timer.
 > - `FCLK`: it is synchronized with HCLK, but it's not affected by sleeping condition of the processor, in which `HCLK` stops; `FCLK` ensures that interrupts can be sampled, and sleep events can be traced, while the processor is sleeping.
-> - `APB1`/`APB2`: they stand for Advanced Peripheral Bus, on which there are the clock sources to which most peripherals and timers are connected. The relative clock sources are limited to a maximum of 54 and 108 MHz rispectively when driving *peripheral clocks* and 108 and 216 MHz rispectively when driving *timer clocks*. For a complete reference of which peripherals/clocks are connected to these two timers refer to the following table.
+> - `APB1`/`APB2`: they stand for Advanced Peripheral Bus, on which there are the clock sources to which most peripherals and timers are connected. The relative clock sources are limited to a maximum of 54 and 108 MHz respectively when driving *peripheral clocks* and 108 and 216 MHz respectively when driving *timer clocks*. For a complete reference of which peripherals/clocks are connected to these two timers refer to the following table.
 
 
 | Clock Source          | Maximum<br>Frequency<br>(default) | Timer/Peripheral                                                                                                                              |
@@ -282,7 +282,7 @@ The highest priority in the ARM architecture is the 0-priority, while the lowest
 
 The sub-priority is used only if the processor has to choose between two or more same-priority interrupts in a given moment. Typically this happens whenever a high-priority interrupt ends its execution and the processor has to choose between more than one interrupt with same priority. This is the only case where sub priority has a meaning, and once again, lower absolute value means higher sub-priority.
 
-> While usually the 0-priority is reserved to faults or other system interrupts, we can use it because their trigger is so unlikely that when it happens it's something so bad that our system could be irreversiverly damaged, like when the processor encounters very big problems. However the good practice is to change the priority of peripheral handlers to a non-zero value.
+> While usually the 0-priority is reserved to faults or other system interrupts, we can use it because their trigger is so unlikely that when it happens it's something so bad that our system could be irreversibly damaged, like when the processor encounters very big problems. However the good practice is to change the priority of peripheral handlers to a non-zero value.
 
 ![NVIC Configuration](mec-pics/14.png "NVIC Configuration window")
 
@@ -393,7 +393,7 @@ simultaneously:
 
 Each timer which supports one or more channels supports different modes in which these channels can be used, each with a different purpose.
 
-#### Timer Input Capure Mode
+#### Timer Input Capture Mode
 
 The timer can be used in input capture mode to measure an external signal. Depending on timer clock, prescaler and timer resolution, the maximum measured period is deduced.
 
@@ -427,9 +427,9 @@ There are two modes, the first one:
 
 
 When we combine these modes with the different counting modes that we can select, we obtain the following scenarios (which are also resumed in the following table):
-- if we adopt PWM mode 1 and `CNT` is reset to zero when `ARR` value is reached, then we get a *left/right-aligned PWM signal with duty cycle ![CRR/ARR](https://latex.codecogs.com/svg.latex?\tiny&space;\frac{CCR}{ARR})*, where alignment depends on the counting direction, rispectively up/down.
+- if we adopt PWM mode 1 and `CNT` is reset to zero when `ARR` value is reached, then we get a *left/right-aligned PWM signal with duty cycle ![CRR/ARR](https://latex.codecogs.com/svg.latex?\tiny&space;\frac{CCR}{ARR})*, where alignment depends on the counting direction, respectively up/down.
 - if we adopt PWM mode 1 and counting mode is inverted when `CNT` reaches `ARR` or zero value, then we get a *middle-aligned PWM signal with duty cycle ![CRR/ARR](https://latex.codecogs.com/svg.latex?\tiny&space;\frac{CCR}{ARR})*.
-- if we adopt PWM mode 2 and `CNT` is reset to zero when `ARR` value is reached, then we get a *right/left-aligned PWM signal with duty cycle ![1-CRR/ARR](https://latex.codecogs.com/svg.latex?\tiny&space;\frac{ARR-CCR}{ARR}=1-\frac{CRR}{ARR})*, where alignment depends on the counting direction, rispectively up/down.
+- if we adopt PWM mode 2 and `CNT` is reset to zero when `ARR` value is reached, then we get a *right/left-aligned PWM signal with duty cycle ![1-CRR/ARR](https://latex.codecogs.com/svg.latex?\tiny&space;\frac{ARR-CCR}{ARR}=1-\frac{CRR}{ARR})*, where alignment depends on the counting direction, respectively up/down.
 - if we adopt PWM mode 2 and counting mode is inverted when `CNT` reaches `ARR` or zero value, then we get a *middle-aligned PWM signal with duty cycle ![1-CRR/ARR](https://latex.codecogs.com/svg.latex?\tiny&space;\frac{ARR-CCR}{ARR}=1-\frac{CRR}{ARR})*.
 
 | PWM Mode | Counting Mode | Duty Cycle                                                                       | Alignment |
@@ -475,7 +475,7 @@ Independently from the number of enabled channels we have for the current timer,
 - *Counter Period*: contained in *Auto Reload Register* (`ARR`), it is actually expressed as the maximum value that can be reached counting up or from which counting starts when going down, thus the same reasoning that has been applied to the prescaler can be applied here.
 - *Internal Clock Division* (`CKD`): it acts like the prescaler above, but can only be set usually to small values (no division, 2, 4). Basically the clock seen by the timer has a period that is either the same, double or four times the one of the input clock.
 - *Repetition Counter* (`RCR`): if present, it can count how many times a full cycle of the `CNT` counter has been reached. If its maximum value is set to a value different than zero, the event generated by the timer will be generated only when `RCR` value has reached the maximum one.
-- *Auto Reload Preload*: if enabled, it enables the counter to start again once the maximum/minimum value are reached when counting up/down. Otherwise the timer will count only once untile the desired value is reached.
+- *Auto Reload Preload*: if enabled, it enables the counter to start again once the maximum/minimum value are reached when counting up/down. Otherwise the timer will count only once until the desired value is reached.
 
 Using previous settings, we can set the frequency of an event generated by a counter in *Input Capture Mode* using the following formula:
 <!--
